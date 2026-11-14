@@ -1,1 +1,245 @@
 
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#174c76">
+<title>六合彩AI預測</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ background:#edf3f9;
+ font-family:Arial,"Noto Sans TC",sans-serif;
+ color:#18334c;
+}
+header{
+ background:#174c76;
+ color:white;
+ text-align:center;
+ padding:22px 10px;
+}
+h1{font-size:27px;margin:0}
+main{max-width:600px;margin:20px auto;padding:12px}
+.card{
+ background:white;
+ padding:20px 12px;
+ border-radius:14px;
+ text-align:center;
+ box-shadow:0 3px 12px #0001;
+}
+.date{font-size:19px;margin:15px 0}
+.numbers{
+ display:flex;
+ justify-content:center;
+ flex-wrap:wrap;
+ gap:7px;
+ margin:20px 0;
+}
+.ball{
+ width:43px;
+ height:43px;
+ border-radius:50%;
+ background:#17679c;
+ color:white;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ font-size:20px;
+ font-weight:bold;
+}
+.special{
+ background:#e53935;
+}
+h2{font-size:20px}
+button{
+ background:#17679c;
+ color:white;
+ border:0;
+ border-radius:10px;
+ padding:13px 22px;
+ font-size:17px;
+ font-weight:bold;
+ cursor:pointer;
+}
+input{
+ padding:10px;
+ font-size:18px;
+ border:1px solid #aaa;
+ border-radius:7px;
+ max-width:100%;
+}
+input[type=number]{width:65px;text-align:center}
+.inputs{
+ display:flex;
+ justify-content:center;
+ flex-wrap:wrap;
+ gap:7px;
+ margin:15px 0;
+}
+#editor{display:none;margin-top:20px}
+.note{font-size:13px;color:#667}
+</style>
+</head>
+<body>
+
+<header>
+<h1>六合彩AI預測</h1>
+</header>
+
+<main>
+<section class="card">
+
+<div class="date">
+預測日期：<span id="showDate">尚未填寫</span>
+</div>
+
+<h2>預測號碼</h2>
+<div class="numbers" id="showNumbers"></div>
+
+<h2>特別號</h2>
+<div class="numbers" id="showSpecial"></div>
+
+<button onclick="openEditor()">填寫／修改預測</button>
+
+<div id="editor">
+<h2>填寫預測日期</h2>
+<input type="date" id="dateInput">
+
+<h2>輸入6個預測號碼</h2>
+<div class="inputs" id="numberInputs"></div>
+
+<h2>輸入特別號</h2>
+<input type="number" id="specialInput" min="1" max="49">
+
+<p>
+<button onclick="saveData()">儲存預測</button>
+</p>
+</div>
+
+<p class="note">號碼範圍：01～49</p>
+
+</section>
+</main>
+
+<script>
+const KEY="markSixPredictionV1";
+
+const inputBox=document.getElementById("numberInputs");
+
+for(let i=0;i<6;i++){
+ const input=document.createElement("input");
+ input.type="number";
+ input.min=1;
+ input.max=49;
+ input.id="n"+i;
+ input.placeholder=String(i+1);
+ inputBox.appendChild(input);
+}
+
+function ball(n,special=false){
+ const el=document.createElement("div");
+ el.className="ball"+(special?" special":"");
+ el.textContent=String(n).padStart(2,"0");
+ return el;
+}
+
+function displayData(){
+ const raw=localStorage.getItem(KEY);
+ const nums=document.getElementById("showNumbers");
+ const sp=document.getElementById("showSpecial");
+ nums.innerHTML="";
+ sp.innerHTML="";
+
+ if(!raw){
+  document.getElementById("showDate").textContent="尚未填寫";
+  return;
+ }
+
+ try{
+  const data=JSON.parse(raw);
+  document.getElementById("showDate").textContent=data.date;
+  data.numbers.forEach(n=>nums.appendChild(ball(n)));
+  sp.appendChild(ball(data.special,true));
+ }catch(e){
+  alert("讀取資料失敗");
+ }
+}
+
+function openEditor(){
+ const editor=document.getElementById("editor");
+ editor.style.display="block";
+
+ const raw=localStorage.getItem(KEY);
+ if(raw){
+  try{
+   const data=JSON.parse(raw);
+   document.getElementById("dateInput").value=data.date;
+   data.numbers.forEach((n,i)=>{
+    document.getElementById("n"+i).value=n;
+   });
+   document.getElementById("specialInput").value=data.special;
+  }catch(e){}
+ }else{
+  const today=new Date();
+  const localDate=new Date(today.getTime()-today.getTimezoneOffset()*60000);
+  document.getElementById("dateInput").value=localDate.toISOString().slice(0,10);
+ }
+}
+
+function saveData(){
+ const date=document.getElementById("dateInput").value;
+ const numbers=[];
+
+ for(let i=0;i<6;i++){
+  const value=document.getElementById("n"+i).value;
+  const n=Number(value);
+  if(value.trim()==="" || !Number.isInteger(n) || n<1 || n>49){
+   alert("請正確輸入6個號碼（1～49）");
+   return;
+  }
+  numbers.push(n);
+ }
+
+ const specialValue=document.getElementById("specialInput").value;
+ const special=Number(specialValue);
+
+ if(!date){
+  alert("請選擇預測日期");
+  return;
+ }
+
+ if(new Set(numbers).size!==6){
+  alert("6個預測號碼不可重複");
+  return;
+ }
+
+ if(specialValue.trim()==="" || !Number.isInteger(special) || special<1 || special>49){
+  alert("請正確輸入特別號（1～49）");
+  return;
+ }
+
+ if(numbers.includes(special)){
+  alert("特別號不可與6個預測號碼重複");
+  return;
+ }
+
+ const data={date,numbers,special};
+
+ try{
+  localStorage.setItem(KEY,JSON.stringify(data));
+  document.getElementById("editor").style.display="none";
+  displayData();
+  alert("預測號碼已儲存！");
+ }catch(e){
+  alert("儲存失敗，請檢查瀏覽器設定");
+ }
+}
+
+displayData();
+</script>
+
+</body>
+</html>
+
